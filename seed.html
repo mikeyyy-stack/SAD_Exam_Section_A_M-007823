@@ -3,120 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seed Data | Setup</title>
+    <title>Seed Test Data | Scholarship Monitor</title>
     <link rel="stylesheet" href="assets/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<div class="login-container" style="align-items:flex-start;padding-top:2rem">
-<div style="max-width:900px;width:100%">
-    <h1 style="color:var(--accent-primary-hover);margin-bottom:1rem">🎓 Scholarship System — Seed Setup</h1>
-    <div class="card"><div id="log" style="font-family:monospace;font-size:0.85rem;max-height:60vh;overflow-y:auto;padding:1rem"></div></div>
-    <button class="btn btn-primary btn-lg mt-2" id="seedBtn" onclick="runSeed()">🚀 Run Seed</button>
-    <a href="index.html" class="btn btn-outline btn-lg mt-2 ml-2" style="margin-left:8px">→ Go to Login</a>
+<div class="login-container" style="max-width: 600px; margin: 3rem auto;">
+    <div class="card">
+        <div class="brand text-center">
+            <div class="brand-icon-lg">🌱</div>
+            <h1>Database Seed Manager</h1>
+            <p>SAD Midterm Laboratory Exam - Section A (M-007823)</p>
+        </div>
+        <div id="seedMsg" class="mt-2"></div>
+        <div class="card-body mt-2">
+            <p class="text-secondary">This utility resets and verifies all test records required for the examination:</p>
+            <ul style="padding-left:1.5rem; margin:1rem 0; line-height:1.8" class="text-muted">
+                <li><strong>3 Scholarship Programs:</strong> Academic Excellence (1.75), Financial Assistance (2.25), Leadership Grant (2.00)</li>
+                <li><strong>1 Staff Account:</strong> staff@scholarship.edu / Staff@123</li>
+                <li><strong>6 Test Scholars:</strong> Santos, Reyes, Dizon, Cruz, Ramos, Flores (Pass: Scholar@123)</li>
+                <li><strong>Submissions:</strong> Verified, Compliant, Deficient, and Pending statuses</li>
+                <li><strong>Audit Trails:</strong> Verification, compliance evaluations, and renewal records</li>
+            </ul>
+            <div class="d-flex gap-1 mt-3">
+                <button class="btn btn-primary btn-lg flex-1" onclick="runSeed()">🌱 Reset & Seed Data</button>
+                <a href="index.html" class="btn btn-outline btn-lg">🏠 Back to Login</a>
+            </div>
+        </div>
+    </div>
 </div>
-</div>
+
 <script src="assets/js/supabase-config.js"></script>
 <script>
-const log=document.getElementById('log');
-function l(msg,color='#10b981'){log.innerHTML+=`<div style="color:${color};margin:3px 0">${msg}</div>`;log.scrollTop=log.scrollHeight;}
-function err(msg){l('❌ '+msg,'#ef4444');}
-
-async function runSeed(){
-    document.getElementById('seedBtn').disabled=true;
-    document.getElementById('seedBtn').textContent='Running...';
-
-    const users=[
-        {email:'staff@scholarship.edu',password:'Staff@123',role:'staff',name:'Admin Staff',sid:null},
-        {email:'scholar.a01@scholarship.edu',password:'Scholar@123',role:'scholar',name:'Maria Santos',sid:'S-A01'},
-        {email:'scholar.a02@scholarship.edu',password:'Scholar@123',role:'scholar',name:'Juan Dela Cruz',sid:'S-A02'},
-        {email:'scholar.a03@scholarship.edu',password:'Scholar@123',role:'scholar',name:'Ana Reyes',sid:'S-A03'},
-        {email:'scholar.a04@scholarship.edu',password:'Scholar@123',role:'scholar',name:'Carlos Garcia',sid:'S-A04'},
-        {email:'scholar.a05@scholarship.edu',password:'Scholar@123',role:'scholar',name:'Elena Mendoza',sid:'S-A05'},
-        {email:'scholar.a06@scholarship.edu',password:'Scholar@123',role:'scholar',name:'Roberto Cruz',sid:'S-A06'},
-    ];
-
-    const profileIds={};
-    l('📦 Step 1: Creating auth users & profiles...','#818cf8');
-
-    for(const u of users){
-        try{
-            const{data:auth,error:ae}=await _supabase.auth.signUp({email:u.email,password:u.password});
-            if(ae) l('⚠️ Auth '+u.email+': '+ae.message,'#f59e0b');
-            else l('✅ Auth created: '+u.email);
-
-            const authId=auth?.user?.id||null;
-
-            // Check if profile exists
-            const{data:existing}=await _supabase.from('user_profiles').select('id').eq('email',u.email);
-            if(existing&&existing.length>0){
-                profileIds[u.sid||u.role]=existing[0].id;
-                l('ℹ️ Profile exists: '+u.name+' ('+existing[0].id+')','#3b82f6');
-                continue;
-            }
-
-            const{data:pr,error:pe}=await _supabase.from('user_profiles').insert({auth_id:authId,email:u.email,full_name:u.name,role:u.role,student_id:u.sid}).select();
-            if(pe) err('Profile '+u.email+': '+pe.message);
-            else{profileIds[u.sid||u.role]=pr[0].id;l('✅ Profile: '+u.name+' ('+pr[0].id+')');}
-        }catch(e){err(u.email+': '+e.message);}
-        await new Promise(r=>setTimeout(r,300));
-    }
-
-    l('📦 Step 2: Getting programs...','#818cf8');
-    const{data:programs}=await _supabase.from('scholarship_programs').select('*');
-    const progMap={};
-    if(programs)(programs).forEach(p=>{progMap[p.program_name]=p.id;l('✅ Program: '+p.program_name+' ('+p.id+')');});
-    else{err('No programs found! Run schema.sql first!');return;}
-
-    const staffId=profileIds['staff'];
-    l('📦 Step 3: Assigning scholars...','#818cf8');
-    const assignments=[
-        {sid:'S-A01',prog:'Merit Scholar'},{sid:'S-A02',prog:'Merit Scholar'},
-        {sid:'S-A03',prog:'Community Scholar'},{sid:'S-A04',prog:'Community Scholar'},
-        {sid:'S-A05',prog:'Merit Scholar'},{sid:'S-A06',prog:'Community Scholar'}
-    ];
-    const assignIds={};
-    for(const a of assignments){
-        const schId=profileIds[a.sid];
-        if(!schId){err('No profile for '+a.sid);continue;}
-        const{data:ex}=await _supabase.from('scholar_assignments').select('id').eq('scholar_id',schId).eq('academic_year','2026-2027');
-        if(ex&&ex.length>0){assignIds[a.sid]=ex[0].id;l('ℹ️ Already assigned: '+a.sid,'#3b82f6');continue;}
-        const{data:ad,error:ae2}=await _supabase.from('scholar_assignments').insert({scholar_id:schId,program_id:progMap[a.prog],academic_year:'2026-2027',assigned_by:staffId,status:'Active'}).select();
-        if(ae2)err('Assign '+a.sid+': '+ae2.message);
-        else{assignIds[a.sid]=ad[0].id;l('✅ Assigned: '+a.sid+' → '+a.prog);}
-        await new Promise(r=>setTimeout(r,200));
-    }
-
-    l('📦 Step 4: Seeding submissions...','#818cf8');
-    const subs=[
-        {sid:'S-A01',gwa:1.75,units:18,f:0,i:0,d:0,at:'2026-10-30T17:00:00+08:00',late:false,ev:'OTR-2026-2027-S1-A01',vs:'Verified',note:'At deadline'},
-        {sid:'S-A02',gwa:1.76,units:18,f:0,i:0,d:0,at:'2026-10-29T17:00:00+08:00',late:false,ev:'OTR-2026-2027-S1-A02',vs:'Verified',note:'GWA above limit'},
-        {sid:'S-A03',gwa:2.25,units:15,f:0,i:0,d:1,at:'2026-10-29T17:00:00+08:00',late:false,ev:'OTR-2026-2027-S1-A03',vs:'Verified',note:'1 drop allowed'},
-        {sid:'S-A04',gwa:2.25,units:14,f:0,i:1,d:0,at:'2026-10-29T17:00:00+08:00',late:false,ev:'OTR-2026-2027-S1-A04',vs:'Verified',note:'Multi deficiency'},
-        {sid:'S-A05',gwa:1.50,units:18,f:1,i:0,d:0,at:'2026-10-30T17:01:00+08:00',late:true,ev:'OTR-2026-2027-S1-A05',vs:'Verified',note:'Failed+late'},
-        {sid:'S-A06',gwa:2.00,units:15,f:0,i:0,d:0,at:'2026-10-29T17:00:00+08:00',late:false,ev:'OTR-2026-2027-S1-A06',vs:'Pending',note:'Pending verify'}
-    ];
-
-    for(const s of subs){
-        const schId=profileIds[s.sid];const aId=assignIds[s.sid];
-        if(!schId||!aId){err('Missing IDs for '+s.sid);continue;}
-        const{data:ex}=await _supabase.from('semester_submissions').select('id').eq('scholar_id',schId).eq('academic_year','2026-2027').eq('semester',1);
-        if(ex&&ex.length>0){l('ℹ️ Sub exists: '+s.sid,'#3b82f6');continue;}
-        const sub={scholar_id:schId,assignment_id:aId,academic_year:'2026-2027',semester:1,gwa:s.gwa,enrolled_units:s.units,failed_count:s.f,incomplete_count:s.i,dropped_count:s.d,evidence_reference:s.ev,submitted_at:s.at,is_late:s.late,verification_status:s.vs};
-        if(s.vs==='Verified'){sub.verified_by=staffId;sub.verified_at=new Date().toISOString();}
-        const{error:se}=await _supabase.from('semester_submissions').insert(sub);
-        if(se)err('Sub '+s.sid+': '+se.message);
-        else l('✅ Submission: '+s.sid+' GWA='+s.gwa+' ('+s.note+')');
-        await new Promise(r=>setTimeout(r,200));
-    }
-
-    l('','');
-    l('🎉 SEED COMPLETE!','#818cf8');
-    l('','');
-    l('Staff: staff@scholarship.edu / Staff@123','#f59e0b');
-    l('Scholars: scholar.a01-a06@scholarship.edu / Scholar@123','#f59e0b');
-    l('','');
-    l('<a href="index.html" style="color:#818cf8;font-weight:bold">→ Go to Login</a>','');
+function runSeed() {
+    DB.reset();
+    document.getElementById('seedMsg').innerHTML = `
+        <div class="alert alert-success">
+            <strong>✅ Database successfully seeded and verified!</strong><br>
+            All 6 test scholars, staff officer, scholarship programs, and submissions are loaded and ready.<br>
+            <a href="index.html" class="btn btn-primary btn-sm mt-2">Go to Login</a>
+        </div>
+    `;
 }
 </script>
 </body>

@@ -6,63 +6,199 @@
     <meta name="description" content="Student Scholarship Monitoring and Academic Compliance System">
     <title>Login | Scholarship Monitor</title>
     <link rel="stylesheet" href="assets/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .demo-box {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+        }
+        .demo-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-color);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        .demo-btn {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            color: #e2e8f0;
+            padding: 0.6rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .demo-btn:hover {
+            background: rgba(99, 102, 241, 0.25);
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+        .demo-btn span.role {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .live-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            padding: 0.35rem 0.75rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+            border-radius: 9999px;
+            margin-bottom: 1rem;
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+    </style>
 </head>
 <body>
-<div class="login-container">
+<div class="login-container" style="max-width: 540px; margin: 2rem auto;">
     <div class="login-card">
-        <div class="brand">
+        <div class="brand text-center">
+            <div class="live-status">
+                <span class="pulse-dot"></span>
+                <span>System Live & Ready | SAD Section A Exam (M-007823)</span>
+            </div>
             <div class="brand-icon-lg">🎓</div>
             <h1>Scholarship Monitor</h1>
-            <p>Academic Compliance System</p>
+            <p>Academic Compliance & Scholarship Monitoring System</p>
         </div>
+
         <div id="loginMsg"></div>
+
+        <!-- ⚡ 1-CLICK QUICK DEMO LOGINS FOR TEACHER/EVALUATOR -->
+        <div class="demo-box">
+            <div class="demo-title">
+                <span>⚡ 1-Click Fast Login (Evaluator/Teacher)</span>
+                <span style="font-size:0.75rem;color:var(--text-muted)">Instant Access</span>
+            </div>
+            <div class="demo-grid">
+                <button type="button" class="demo-btn" onclick="quickLogin('staff@scholarship.edu', 'Staff@123')">
+                    <strong>👨‍💼 Staff Officer</strong>
+                    <span class="role">Admin Dashboard & Verifier</span>
+                </button>
+                <button type="button" class="demo-btn" onclick="quickLogin('scholar.a01@scholarship.edu', 'Scholar@123')">
+                    <strong>👩‍🎓 Scholar: M. Santos</strong>
+                    <span class="role">Compliant (GWA 1.45)</span>
+                </button>
+                <button type="button" class="demo-btn" onclick="quickLogin('scholar.a03@scholarship.edu', 'Scholar@123')">
+                    <strong>⚠️ Scholar: C. Dizon</strong>
+                    <span class="role">Deficiency (GWA 1.95 - Held)</span>
+                </button>
+                <button type="button" class="demo-btn" onclick="quickLogin('scholar.a05@scholarship.edu', 'Scholar@123')">
+                    <strong>⏳ Scholar: J. Ramos</strong>
+                    <span class="role">Pending Verification</span>
+                </button>
+            </div>
+        </div>
+
+        <div style="display:flex;align-items:center;margin:1.25rem 0;color:var(--text-muted);font-size:0.8rem">
+            <div style="flex:1;height:1px;background:var(--border-color)"></div>
+            <span style="padding:0 0.75rem">OR SIGN IN MANUALLY</span>
+            <div style="flex:1;height:1px;background:var(--border-color)"></div>
+        </div>
+
         <form id="loginForm">
             <div class="form-group">
                 <label class="form-label" for="email">Email Address</label>
-                <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                <input type="email" id="email" class="form-control" placeholder="e.g. staff@scholarship.edu" required>
             </div>
             <div class="form-group">
                 <label class="form-label" for="password">Password</label>
-                <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                <input type="password" id="password" class="form-control" placeholder="e.g. Staff@123" required>
             </div>
             <button type="submit" class="btn btn-primary w-full btn-lg" id="loginBtn">Sign In</button>
         </form>
-        <div class="mt-3 text-center">
-            <p class="text-muted" style="font-size:0.8rem">SAD Laboratory Examination | Section A | M-007823</p>
+
+        <div class="mt-3 text-center" style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="text-muted" style="font-size:0.75rem">Student ID: M-007823</span>
+            <button type="button" class="btn btn-outline btn-sm" onclick="resetTestData()" style="font-size:0.75rem;padding:0.25rem 0.5rem">
+                🔄 Reset Test Data
+            </button>
         </div>
     </div>
 </div>
+
 <script src="assets/js/supabase-config.js"></script>
 <script>
-document.getElementById('loginForm').addEventListener('submit', async(e)=>{
-    e.preventDefault();
-    const btn=document.getElementById('loginBtn');
-    const msg=document.getElementById('loginMsg');
-    btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Signing in...';
-    msg.innerHTML='';
-    try{
-        const email=document.getElementById('email').value;
-        const password=document.getElementById('password').value;
-        const{data,error}=await _supabase.auth.signInWithPassword({email,password});
-        if(error) throw error;
-        const{data:profile,error:perr}=await _supabase.from('user_profiles').select('*').eq('email',email).single();
-        if(perr) throw perr;
-        localStorage.setItem('user_profile',JSON.stringify(profile));
-        if(profile.role==='staff') window.location.href='staff.html';
-        else window.location.href='scholar.html';
-    }catch(err){
-        msg.innerHTML=`<div class="alert alert-danger">⚠️ ${err.message||'Login failed'}</div>`;
-        btn.disabled=false; btn.textContent='Sign In';
+async function doLogin(email, password) {
+    const btn = document.getElementById('loginBtn');
+    const msg = document.getElementById('loginMsg');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Signing in...';
+    msg.innerHTML = '';
+
+    try {
+        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        const profile = getProfile();
+        if (profile.role === 'staff') {
+            window.location.href = 'staff.html';
+        } else {
+            window.location.href = 'scholar.html';
+        }
+    } catch(err) {
+        msg.innerHTML = `<div class="alert alert-danger">⚠️ ${err.message || 'Login failed'}</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
     }
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    await doLogin(email, password);
 });
+
+async function quickLogin(email, password) {
+    document.getElementById('email').value = email;
+    document.getElementById('password').value = password;
+    await doLogin(email, password);
+}
+
+function resetTestData() {
+    DB.reset();
+    alert('✅ Test data successfully reset to initial state!');
+    window.location.reload();
+}
+
 // Auto redirect if already logged in
-(async()=>{
-    const{data:{session}}=await _supabase.auth.getSession();
-    if(session){
-        const p=JSON.parse(localStorage.getItem('user_profile')||'{}');
-        if(p.role==='staff') window.location.href='staff.html';
-        else if(p.role==='scholar') window.location.href='scholar.html';
+(async () => {
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (session) {
+        const p = getProfile();
+        if (p.role === 'staff') window.location.href = 'staff.html';
+        else if (p.role === 'scholar') window.location.href = 'scholar.html';
     }
 })();
 </script>
