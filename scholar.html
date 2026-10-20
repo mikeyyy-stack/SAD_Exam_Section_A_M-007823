@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scholar Dashboard | Scholarship Monitor</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="app-container">
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <div class="navbar-brand"><div class="brand-icon">🎓</div><span>Scholarship Monitor</span></div>
+            <ul class="navbar-nav">
+                <li><a href="#" class="active" id="navDash" onclick="showSec('dash')">📊 My Dashboard</a></li>
+                <li><a href="#" id="navSubmit" onclick="showSec('submit')">📝 Submit Grades</a></li>
+            </ul>
+            <div class="navbar-user">
+                <div class="user-badge"><span id="userName"></span><span class="role-tag scholar">Scholar</span></div>
+                <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    <main class="main-content">
+
+<!-- Dashboard -->
+<div id="secDash">
+    <div class="page-header"><div><h1>📊 My Dashboard</h1><p id="welcomeMsg"></p></div><button class="btn btn-primary" onclick="showSec('submit')">📝 Submit Grades</button></div>
+    <div class="card"><div class="card-header"><h3>📋 My Submissions</h3><button class="btn btn-outline btn-sm" onclick="loadMySubs()">🔄 Refresh</button></div><div id="mySubsTable"></div></div>
+    <div id="detailCard" class="card mt-2 hidden">
+        <div class="card-header"><h3 id="detTitle">📋 Details</h3><button class="btn btn-outline btn-sm" onclick="document.getElementById('detailCard').classList.add('hidden')">✕</button></div>
+        <div id="detContent"></div>
+    </div>
+</div>
+
+<!-- Submit -->
+<div id="secSubmit" class="hidden">
+    <div class="page-header"><div><h1>📝 Submit Semester Grades</h1><p>Submit your academic summary</p></div><button class="btn btn-outline" onclick="showSec('dash')">← Back</button></div>
+    <div class="card" style="max-width:700px">
+        <div id="submitMsg"></div>
+        <form id="gradeForm" onsubmit="submitGrades(event)">
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Academic Year</label><select id="sAY" class="form-control"><option value="2026-2027" selected>2026-2027</option></select></div>
+                <div class="form-group"><label class="form-label">Semester</label><select id="sSem" class="form-control"><option value="1">1st</option><option value="2">2nd</option><option value="3">Summer</option></select></div>
+            </div>
+            <div class="form-group"><label class="form-label">GWA (1.00 - 5.00)</label><input type="number" id="sGwa" class="form-control" min="1.00" max="5.00" step="0.01" required></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Enrolled Units</label><input type="number" id="sUnits" class="form-control" min="0" required></div>
+                <div class="form-group"><label class="form-label">Failed</label><input type="number" id="sFailed" class="form-control" min="0" value="0" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Incomplete</label><input type="number" id="sInc" class="form-control" min="0" value="0" required></div>
+                <div class="form-group"><label class="form-label">Dropped</label><input type="number" id="sDrop" class="form-control" min="0" value="0" required></div>
+            </div>
+            <div class="form-group"><label class="form-label">Grade Document Reference</label><input type="text" id="sEvidence" class="form-control" required placeholder="e.g. OTR-2026-2027-S1"></div>
+            <div class="alert alert-info"><span>ℹ️</span><span>Deadline: <strong>Oct 30, 2026 5:00 PM (PHT)</strong></span></div>
+            <button type="submit" class="btn btn-primary btn-lg w-full">📤 Submit</button>
+        </form>
+    </div>
+</div>
+
+    </main>
+</div>
+<script src="assets/js/supabase-config.js"></script>
+<script>
+let profile=null;
+(async()=>{
+    profile=await requireAuth('scholar');
+    if(!profile)return;
+    document.getElementById('userName').textContent=profile.full_name;
+    document.getElementById('welcomeMsg').textContent=`Welcome, ${profile.full_name} (${profile.student_id||''})`;
+    loadMySubs();
+})();
+
+function showSec(s){
+    document.getElementById('secDash').classList.add('hidden');
+    document.getElementById('secSubmit').classList.add('hidden');
+    document.getElementById('navDash').classList.remove('active');
+    document.getElementById('navSubmit').classList.remove('active');
+    if(s==='dash'){document.getElementById('secDash').classList.remove('hidden');document.getElementById('navDash').classList.add('active');loadMySubs();}
+    if(s==='submit'){document.getElementById('secSubmit').classList.remove('hidden');document.getElementById('navSubmit').classList.add('active');}
+}
+
+async function loadMySubs(){
+    const{data}=await _supabase.from('semester_submissions').select('*,scholar_assignments!inner(scholarship_programs(*))').eq('scholar_id',profile.id).order('submitted_at',{ascending:false});
+    const c=document.getElementById('mySubsTable');
+    if(!data||!data.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><h3>No submissions yet</h3><button class="btn btn-primary mt-2" onclick="showSec(\'submit\')">📝 Submit Grades</button></div>';return;}
+    let h='<div class="table-container"><table><thead><tr><th>AY/Sem</th><th>Program</th><th>GWA</th><th>Units</th><th>F/I/D</th><th>Verification</th><th>Compliance</th><th>Renewal</th><th>Actions</th></tr></thead><tbody>';
+    data.forEach(s=>{
+        h+=`<tr><td><strong>${esc(s.academic_year)}</strong><br>Sem ${s.semester}</td>
+            <td><span class="badge badge-info">${esc(s.scholar_assignments?.scholarship_programs?.program_name)}</span></td>
+            <td><strong>${s.gwa}</strong></td><td>${s.enrolled_units}</td><td>${s.failed_count}/${s.incomplete_count}/${s.dropped_count}</td>
+            <td>${statusBadge(s.verification_status)}</td>
+            <td>${s.compliance_status?statusBadge(s.compliance_status):'<span class="text-muted">—</span>'}</td>
+            <td>${s.renewal_decision?statusBadge(s.renewal_decision):'<span class="text-muted">—</span>'}</td>
+            <td><button class="btn btn-outline btn-sm" onclick='viewDet(${JSON.stringify(s).replace(/'/g,"&#39;")})'>View</button>
+            ${s.verification_status==='Returned'?'<button class="btn btn-warning btn-sm mt-1" onclick="showSec(\'submit\')">Resubmit</button>':''}</td></tr>`;
+    });
+    h+='</tbody></table></div>';c.innerHTML=h;
+}
+
+function viewDet(s){
+    const dc=document.getElementById('detailCard');dc.classList.remove('hidden');
+    document.getElementById('detTitle').textContent=`📋 ${s.academic_year} Sem ${s.semester}`;
+    document.getElementById('detContent').innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+            <div class="compliance-check"><span class="check-label">GWA</span><span class="check-value"><strong>${s.gwa}</strong></span></div>
+            <div class="compliance-check"><span class="check-label">Units</span><span class="check-value">${s.enrolled_units}</span></div>
+            <div class="compliance-check"><span class="check-label">Failed</span><span class="check-value">${s.failed_count}</span></div>
+            <div class="compliance-check"><span class="check-label">Incomplete</span><span class="check-value">${s.incomplete_count}</span></div>
+            <div class="compliance-check"><span class="check-label">Dropped</span><span class="check-value">${s.dropped_count}</span></div>
+            <div class="compliance-check"><span class="check-label">Evidence</span><span class="check-value">${esc(s.evidence_reference)}</span></div>
+        </div><div>
+            <div class="compliance-check"><span class="check-label">Verification</span><span class="check-value">${statusBadge(s.verification_status)}</span></div>
+            ${s.verification_notes?'<div class="compliance-check"><span class="check-label">Notes</span><span class="check-value">'+esc(s.verification_notes)+'</span></div>':''}
+            <div class="compliance-check"><span class="check-label">Compliance</span><span class="check-value">${s.compliance_status?statusBadge(s.compliance_status):'Pending'}</span></div>
+            ${s.compliance_reasons?'<div class="compliance-check"><span class="check-label">Reasons</span><span class="check-value" style="font-size:0.8rem">'+esc(s.compliance_reasons)+'</span></div>':''}
+            <div class="compliance-check"><span class="check-label">Renewal</span><span class="check-value">${s.renewal_decision?statusBadge(s.renewal_decision):'Pending'}</span></div>
+        </div></div>`;
+    dc.scrollIntoView({behavior:'smooth'});
+}
+
+async function submitGrades(e){
+    e.preventDefault();
+    const msg=document.getElementById('submitMsg');
+    const gwa=parseFloat(document.getElementById('sGwa').value);
+    const units=parseInt(document.getElementById('sUnits').value);
+    const failed=parseInt(document.getElementById('sFailed').value);
+    const inc=parseInt(document.getElementById('sInc').value);
+    const drop=parseInt(document.getElementById('sDrop').value);
+    if(gwa<1||gwa>5){msg.innerHTML='<div class="alert alert-danger">⚠️ GWA must be 1.00–5.00</div>';return;}
+    if(units<0||failed<0||inc<0||drop<0){msg.innerHTML='<div class="alert alert-danger">⚠️ Counts must be non-negative</div>';return;}
+    const ay=document.getElementById('sAY').value;
+    const sem=parseInt(document.getElementById('sSem').value);
+    // Check duplicate
+    const{data:dup}=await _supabase.from('semester_submissions').select('id,verification_status').eq('scholar_id',profile.id).eq('academic_year',ay).eq('semester',sem);
+    if(dup&&dup.length>0){
+        if(dup[0].verification_status==='Returned'){
+            // Resubmit
+            const deadline=new Date('2026-10-30T17:00:00+08:00');
+            const now=new Date();
+            await _supabase.from('semester_submissions').update({gwa,enrolled_units:units,failed_count:failed,incomplete_count:inc,dropped_count:drop,evidence_reference:document.getElementById('sEvidence').value,submitted_at:now.toISOString(),is_late:now>deadline,verification_status:'Pending',verification_notes:null,verified_by:null,verified_at:null,compliance_status:null,compliance_reasons:null,renewal_decision:null,renewal_notes:null}).eq('id',dup[0].id);
+            await _supabase.from('audit_log').insert({submission_id:dup[0].id,action:'Resubmission',actor_id:profile.id,actor_name:profile.full_name,details:'Corrected and resubmitted.'});
+            msg.innerHTML='<div class="alert alert-success">✅ Resubmitted! Redirecting...</div>';
+            setTimeout(()=>showSec('dash'),1500);return;
+        }
+        msg.innerHTML='<div class="alert alert-danger">⚠️ Duplicate: record for '+ay+' Sem '+sem+' already exists.</div>';return;
+    }
+    // Get assignment
+    const{data:assigns}=await _supabase.from('scholar_assignments').select('*,scholarship_programs(*)').eq('scholar_id',profile.id).eq('academic_year',ay).eq('status','Active');
+    if(!assigns||!assigns.length){msg.innerHTML='<div class="alert alert-danger">⚠️ No active scholarship assignment found.</div>';return;}
+    const a=assigns[0];
+    const deadline=new Date(a.scholarship_programs.submission_deadline);
+    const now=new Date();
+    const{error}=await _supabase.from('semester_submissions').insert({scholar_id:profile.id,assignment_id:a.id,academic_year:ay,semester:sem,gwa,enrolled_units:units,failed_count:failed,incomplete_count:inc,dropped_count:drop,evidence_reference:document.getElementById('sEvidence').value,submitted_at:now.toISOString(),is_late:now>deadline,verification_status:'Pending'});
+    if(error){msg.innerHTML=`<div class="alert alert-danger">⚠️ ${error.message}</div>`;return;}
+    msg.innerHTML='<div class="alert alert-success">✅ Submitted! Redirecting...</div>';
+    setTimeout(()=>showSec('dash'),1500);
+}
+</script>
+</body>
+</html>

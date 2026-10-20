@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Student Scholarship Monitoring and Academic Compliance System">
+    <title>Login | Scholarship Monitor</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="login-container">
+    <div class="login-card">
+        <div class="brand">
+            <div class="brand-icon-lg">🎓</div>
+            <h1>Scholarship Monitor</h1>
+            <p>Academic Compliance System</p>
+        </div>
+        <div id="loginMsg"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label" for="email">Email Address</label>
+                <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-full btn-lg" id="loginBtn">Sign In</button>
+        </form>
+        <div class="mt-3 text-center">
+            <p class="text-muted" style="font-size:0.8rem">SAD Laboratory Examination | Section A | M-007823</p>
+        </div>
+    </div>
+</div>
+<script src="assets/js/supabase-config.js"></script>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async(e)=>{
+    e.preventDefault();
+    const btn=document.getElementById('loginBtn');
+    const msg=document.getElementById('loginMsg');
+    btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Signing in...';
+    msg.innerHTML='';
+    try{
+        const email=document.getElementById('email').value;
+        const password=document.getElementById('password').value;
+        const{data,error}=await _supabase.auth.signInWithPassword({email,password});
+        if(error) throw error;
+        const{data:profile,error:perr}=await _supabase.from('user_profiles').select('*').eq('email',email).single();
+        if(perr) throw perr;
+        localStorage.setItem('user_profile',JSON.stringify(profile));
+        if(profile.role==='staff') window.location.href='staff.html';
+        else window.location.href='scholar.html';
+    }catch(err){
+        msg.innerHTML=`<div class="alert alert-danger">⚠️ ${err.message||'Login failed'}</div>`;
+        btn.disabled=false; btn.textContent='Sign In';
+    }
+});
+// Auto redirect if already logged in
+(async()=>{
+    const{data:{session}}=await _supabase.auth.getSession();
+    if(session){
+        const p=JSON.parse(localStorage.getItem('user_profile')||'{}');
+        if(p.role==='staff') window.location.href='staff.html';
+        else if(p.role==='scholar') window.location.href='scholar.html';
+    }
+})();
+</script>
+</body>
+</html>

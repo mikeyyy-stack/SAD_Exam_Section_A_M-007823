@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard | Scholarship Monitor</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="app-container">
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <div class="navbar-brand"><div class="brand-icon">🎓</div><span>Scholarship Monitor</span></div>
+            <ul class="navbar-nav">
+                <li><a href="#" onclick="showSection('dashboard')" class="active" id="navDash">📊 Dashboard</a></li>
+                <li><a href="#" onclick="showSection('scholars')" id="navSch">👥 Scholars</a></li>
+                <li><a href="#" onclick="showSection('submissions')" id="navSub">📋 Submissions</a></li>
+            </ul>
+            <div class="navbar-user">
+                <div class="user-badge"><span id="userName"></span><span class="role-tag staff">Staff</span></div>
+                <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+    <main class="main-content">
+
+<!-- ═══ DASHBOARD SECTION ═══ -->
+<div id="sectionDashboard">
+    <div class="page-header">
+        <div><h1>📊 Staff Dashboard</h1><p>Scholarship monitoring overview</p></div>
+        <div class="d-flex gap-1 align-center">
+            <select id="filterYear" class="form-control" style="max-width:160px"><option value="2026-2027" selected>AY 2026-2027</option></select>
+            <select id="filterSem" class="form-control" style="max-width:140px"><option value="1" selected>Semester 1</option><option value="2">Semester 2</option></select>
+            <button class="btn btn-primary btn-sm" onclick="loadDashboard()">🔄 Refresh</button>
+        </div>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card primary"><div class="stat-icon">👥</div><div class="stat-value" id="sAssigned">-</div><div class="stat-label">Total Assigned</div></div>
+        <div class="stat-card warning"><div class="stat-icon">⏳</div><div class="stat-value" id="sPending">-</div><div class="stat-label">Pending Verification</div></div>
+        <div class="stat-card success"><div class="stat-icon">✅</div><div class="stat-value" id="sCompliant">-</div><div class="stat-label">Compliant</div></div>
+        <div class="stat-card danger"><div class="stat-icon">⚠️</div><div class="stat-value" id="sDeficient">-</div><div class="stat-label">With Deficiency</div></div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3>🔍 Quick Search</h3></div>
+        <div class="filter-bar">
+            <input type="text" id="searchQ" class="form-control" placeholder="Search by Student ID or Name..." style="max-width:300px">
+            <button class="btn btn-primary btn-sm" onclick="doSearch()">Search</button>
+        </div>
+        <div id="searchResults"></div>
+    </div>
+</div>
+
+<!-- ═══ SCHOLARS SECTION ═══ -->
+<div id="sectionScholars" class="hidden">
+    <div class="page-header">
+        <div><h1>👥 Scholar Management</h1><p>Register scholars and assign programs</p></div>
+        <div class="d-flex gap-1">
+            <button class="btn btn-primary" onclick="openModal('registerModal')">+ Register Scholar</button>
+            <button class="btn btn-outline" onclick="openAssignModal()">🔗 Assign Program</button>
+        </div>
+    </div>
+    <div class="card"><div id="scholarsTable"><div class="empty-state"><div class="spinner"></div><p class="mt-1">Loading...</p></div></div></div>
+</div>
+
+<!-- ═══ SUBMISSIONS SECTION ═══ -->
+<div id="sectionSubmissions" class="hidden">
+    <div id="subListView">
+        <div class="page-header"><div><h1>📋 Submissions</h1><p>Verify, evaluate, and manage renewals</p></div></div>
+        <div class="filter-bar">
+            <input type="text" id="subSearch" class="form-control" placeholder="Search..." style="max-width:200px">
+            <select id="subFilterVerify" class="form-control" style="max-width:160px"><option value="">All Verification</option><option value="Pending">Pending</option><option value="Verified">Verified</option><option value="Returned">Returned</option></select>
+            <select id="subFilterComp" class="form-control" style="max-width:180px"><option value="">All Compliance</option><option value="Compliant">Compliant</option><option value="With Deficiency">With Deficiency</option></select>
+            <button class="btn btn-primary btn-sm" onclick="loadSubmissions()">🔍 Filter</button>
+        </div>
+        <div class="card"><div id="subTable"></div></div>
+    </div>
+    <div id="subDetailView" class="hidden">
+        <div class="page-header"><div><h1 id="detailTitle">📋 Detail</h1><p id="detailSub"></p></div><button class="btn btn-outline" onclick="backToList()">← Back</button></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+            <div>
+                <div class="card mb-2"><div class="card-header"><h3>📊 Academic Summary</h3><span id="lateTag"></span></div><div id="detAcademic"></div></div>
+                <div class="card mb-2"><div class="card-header"><h3>📋 Policy Compliance</h3><span id="compBadge"></span></div><div id="detCompliance"></div></div>
+            </div>
+            <div>
+                <div class="card mb-2"><div class="card-header"><h3>✔️ Verification</h3><span id="verBadge"></span></div><div id="detVerify"></div></div>
+                <div class="card mb-2"><div class="card-header"><h3>🎓 Renewal Decision</h3><span id="renBadge"></span></div><div id="detRenewal"></div></div>
+                <div class="card"><div class="card-header"><h3>📝 Audit History</h3></div><div id="detAudit"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </main>
+</div>
+
+<!-- Register Modal -->
+<div id="registerModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('registerModal')">
+<div class="modal-content">
+    <div class="modal-header"><h3>Register New Scholar</h3><button class="modal-close" onclick="closeModal('registerModal')">✕</button></div>
+    <form id="regForm" onsubmit="registerScholar(event)">
+        <div class="form-group"><label class="form-label">Full Name</label><input type="text" id="regName" class="form-control" required></div>
+        <div class="form-group"><label class="form-label">Student ID</label><input type="text" id="regSid" class="form-control" required></div>
+        <div class="form-group"><label class="form-label">Email</label><input type="email" id="regEmail" class="form-control" required></div>
+        <div class="form-group"><label class="form-label">Password</label><input type="password" id="regPass" class="form-control" required minlength="6"></div>
+        <div id="regMsg"></div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal('registerModal')">Cancel</button><button type="submit" class="btn btn-primary">Register</button></div>
+    </form>
+</div></div>
+
+<!-- Assign Modal -->
+<div id="assignModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal('assignModal')">
+<div class="modal-content">
+    <div class="modal-header"><h3>Assign Program</h3><button class="modal-close" onclick="closeModal('assignModal')">✕</button></div>
+    <form onsubmit="assignProgram(event)">
+        <div class="form-group"><label class="form-label">Scholar</label><select id="aScholar" class="form-control" required></select></div>
+        <div class="form-group"><label class="form-label">Program</label><select id="aProgram" class="form-control" required></select></div>
+        <div class="form-group"><label class="form-label">Academic Year</label><select id="aYear" class="form-control"><option value="2026-2027" selected>2026-2027</option></select></div>
+        <div id="assignMsg"></div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal('assignModal')">Cancel</button><button type="submit" class="btn btn-primary">Assign</button></div>
+    </form>
+</div></div>
+
+<script src="assets/js/supabase-config.js"></script>
+<script>
+let currentSub = null;
+let profile = null;
+
+(async()=>{
+    profile = await requireAuth('staff');
+    if(!profile) return;
+    document.getElementById('userName').textContent = profile.full_name;
+    loadDashboard();
+})();
+
+function showSection(s){
+    ['Dashboard','Scholars','Submissions'].forEach(x=>{
+        document.getElementById('section'+x).classList.add('hidden');
+        document.getElementById('nav'+x[0]+(x==='Dashboard'?'ash':x==='Scholars'?'ch':'ub')).classList.remove('active');
+    });
+    document.getElementById('navDash').classList.remove('active');
+    document.getElementById('navSch').classList.remove('active');
+    document.getElementById('navSub').classList.remove('active');
+    if(s==='dashboard'){document.getElementById('sectionDashboard').classList.remove('hidden');document.getElementById('navDash').classList.add('active');loadDashboard();}
+    if(s==='scholars'){document.getElementById('sectionScholars').classList.remove('hidden');document.getElementById('navSch').classList.add('active');loadScholars();}
+    if(s==='submissions'){document.getElementById('sectionSubmissions').classList.remove('hidden');document.getElementById('navSub').classList.add('active');loadSubmissions();}
+}
+
+// ─── DASHBOARD ───
+async function loadDashboard(){
+    const ay=document.getElementById('filterYear').value, sem=parseInt(document.getElementById('filterSem').value);
+    const{data:assigns}=await _supabase.from('scholar_assignments').select('id').eq('status','Active');
+    const{data:subs}=await _supabase.from('semester_submissions').select('*').eq('academic_year',ay).eq('semester',sem);
+    document.getElementById('sAssigned').textContent=assigns?assigns.length:0;
+    let pend=0,comp=0,def=0;
+    (subs||[]).forEach(s=>{if(s.verification_status==='Pending')pend++;if(s.compliance_status==='Compliant')comp++;if(s.compliance_status==='With Deficiency')def++;});
+    document.getElementById('sPending').textContent=pend;
+    document.getElementById('sCompliant').textContent=comp;
+    document.getElementById('sDeficient').textContent=def;
+}
+
+async function doSearch(){
+    const q=document.getElementById('searchQ').value;
+    if(q.length<2){document.getElementById('searchResults').innerHTML='<div class="alert alert-warning">Enter at least 2 characters.</div>';return;}
+    const{data}=await _supabase.from('user_profiles').select('*').eq('role','scholar').or(`student_id.ilike.%${q}%,full_name.ilike.%${q}%`);
+    if(!data||!data.length){document.getElementById('searchResults').innerHTML='<div class="empty-state"><p>No results</p></div>';return;}
+    let h='<div class="table-container mt-1"><table><thead><tr><th>Student ID</th><th>Name</th><th>Email</th></tr></thead><tbody>';
+    data.forEach(s=>{h+=`<tr><td>${esc(s.student_id)}</td><td><strong>${esc(s.full_name)}</strong></td><td>${esc(s.email)}</td></tr>`;});
+    h+='</tbody></table></div>';
+    document.getElementById('searchResults').innerHTML=h;
+}
+
+// ─── SCHOLARS ───
+async function loadScholars(){
+    const{data}=await _supabase.from('user_profiles').select('*,scholar_assignments(*,scholarship_programs(*))').eq('role','scholar');
+    const c=document.getElementById('scholarsTable');
+    if(!data||!data.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">👥</div><h3>No scholars</h3></div>';return;}
+    let h='<div class="table-container"><table><thead><tr><th>Student ID</th><th>Name</th><th>Email</th><th>Program</th></tr></thead><tbody>';
+    data.forEach(s=>{
+        const progs=(s.scholar_assignments||[]).map(a=>`<span class="badge badge-active">${esc(a.scholarship_programs?.program_name||'')}</span>`).join(' ')||'<span class="text-muted">None</span>';
+        h+=`<tr><td><strong>${esc(s.student_id)}</strong></td><td>${esc(s.full_name)}</td><td>${esc(s.email)}</td><td>${progs}</td></tr>`;
+    });
+    h+='</tbody></table></div>';c.innerHTML=h;
+}
+
+async function registerScholar(e){
+    e.preventDefault();
+    const msg=document.getElementById('regMsg');
+    try{
+        const{data:auth,error:ae}=await _supabase.auth.signUp({email:document.getElementById('regEmail').value,password:document.getElementById('regPass').value});
+        if(ae)throw ae;
+        const{error:pe}=await _supabase.from('user_profiles').insert({auth_id:auth.user?.id,email:document.getElementById('regEmail').value,full_name:document.getElementById('regName').value,role:'scholar',student_id:document.getElementById('regSid').value});
+        if(pe)throw pe;
+        msg.innerHTML='<div class="alert alert-success">✅ Registered!</div>';
+        loadScholars();setTimeout(()=>closeModal('registerModal'),1000);
+    }catch(err){msg.innerHTML=`<div class="alert alert-danger">⚠️ ${err.message}</div>`;}
+}
+
+async function openAssignModal(){
+    const{data:scholars}=await _supabase.from('user_profiles').select('id,full_name,student_id').eq('role','scholar');
+    const{data:programs}=await _supabase.from('scholarship_programs').select('*');
+    const ss=document.getElementById('aScholar');ss.innerHTML='<option value="">Select...</option>';
+    (scholars||[]).forEach(s=>{ss.innerHTML+=`<option value="${s.id}">${s.student_id} - ${s.full_name}</option>`;});
+    const ps=document.getElementById('aProgram');ps.innerHTML='<option value="">Select...</option>';
+    (programs||[]).forEach(p=>{ps.innerHTML+=`<option value="${p.id}">${p.program_name}</option>`;});
+    openModal('assignModal');
+}
+
+async function assignProgram(e){
+    e.preventDefault();
+    const msg=document.getElementById('assignMsg');
+    try{
+        const{error}=await _supabase.from('scholar_assignments').insert({scholar_id:document.getElementById('aScholar').value,program_id:document.getElementById('aProgram').value,academic_year:document.getElementById('aYear').value,assigned_by:profile.id,status:'Active'});
+        if(error)throw error;
+        msg.innerHTML='<div class="alert alert-success">✅ Assigned!</div>';
+        loadScholars();setTimeout(()=>closeModal('assignModal'),1000);
+    }catch(err){msg.innerHTML=`<div class="alert alert-danger">⚠️ ${err.message}</div>`;}
+}
+
+// ─── SUBMISSIONS ───
+async function loadSubmissions(){
+    const search=document.getElementById('subSearch').value.toLowerCase();
+    const vf=document.getElementById('subFilterVerify').value;
+    const cf=document.getElementById('subFilterComp').value;
+    let q=_supabase.from('semester_submissions').select('*,user_profiles!semester_submissions_scholar_id_fkey(full_name,student_id),scholar_assignments!inner(scholarship_programs(*))').order('submitted_at',{ascending:false});
+    if(vf)q=q.eq('verification_status',vf);
+    if(cf)q=q.eq('compliance_status',cf);
+    const{data}=await q;
+    let filtered=data||[];
+    if(search)filtered=filtered.filter(s=>(s.user_profiles?.full_name||'').toLowerCase().includes(search)||(s.user_profiles?.student_id||'').toLowerCase().includes(search));
+    const c=document.getElementById('subTable');
+    if(!filtered.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><h3>No submissions</h3></div>';return;}
+    let h='<div class="table-container"><table><thead><tr><th>Student</th><th>Program</th><th>AY/Sem</th><th>GWA</th><th>Units</th><th>F/I/D</th><th>Verification</th><th>Compliance</th><th>Renewal</th><th>Actions</th></tr></thead><tbody>';
+    filtered.forEach(s=>{
+        h+=`<tr>
+            <td><strong>${esc(s.user_profiles?.full_name)}</strong><br><span class="text-muted" style="font-size:0.7rem">${esc(s.user_profiles?.student_id)}</span></td>
+            <td><span class="badge badge-info">${esc(s.scholar_assignments?.scholarship_programs?.program_name)}</span></td>
+            <td>${esc(s.academic_year)}<br>Sem ${s.semester}</td>
+            <td><strong>${s.gwa}</strong></td><td>${s.enrolled_units}</td><td>${s.failed_count}/${s.incomplete_count}/${s.dropped_count}</td>
+            <td>${statusBadge(s.verification_status)}</td>
+            <td>${s.compliance_status?statusBadge(s.compliance_status):'<span class="text-muted">—</span>'}</td>
+            <td>${s.renewal_decision?statusBadge(s.renewal_decision):'<span class="text-muted">—</span>'}</td>
+            <td><button class="btn btn-primary btn-sm" onclick="viewSub('${s.id}')">Review</button></td>
+        </tr>`;
+    });
+    h+='</tbody></table></div>';c.innerHTML=h;
+}
+
+async function viewSub(id){
+    const{data}=await _supabase.from('semester_submissions').select('*,user_profiles!semester_submissions_scholar_id_fkey(full_name,student_id),scholar_assignments!inner(scholarship_programs(*))').eq('id',id).single();
+    if(!data)return;
+    currentSub=data;
+    const prog=data.scholar_assignments?.scholarship_programs||{};
+    document.getElementById('detailTitle').textContent=`📋 ${data.user_profiles?.full_name} (${data.user_profiles?.student_id})`;
+    document.getElementById('detailSub').textContent=`${prog.program_name||''} | ${data.academic_year} Sem ${data.semester}`;
+    document.getElementById('lateTag').innerHTML=data.is_late?'<span class="badge badge-returned">⏰ LATE</span>':'<span class="badge badge-verified">✅ On Time</span>';
+
+    // Academic
+    document.getElementById('detAcademic').innerHTML=`
+        <div class="compliance-check"><span class="check-label">GWA</span><span class="check-value">${data.gwa}</span></div>
+        <div class="compliance-check"><span class="check-label">Enrolled Units</span><span class="check-value">${data.enrolled_units}</span></div>
+        <div class="compliance-check"><span class="check-label">Failed</span><span class="check-value">${data.failed_count}</span></div>
+        <div class="compliance-check"><span class="check-label">Incomplete</span><span class="check-value">${data.incomplete_count}</span></div>
+        <div class="compliance-check"><span class="check-label">Dropped</span><span class="check-value">${data.dropped_count}</span></div>
+        <div class="compliance-check"><span class="check-label">Evidence</span><span class="check-value">${esc(data.evidence_reference)}</span></div>
+        <div class="compliance-check"><span class="check-label">Policy</span><span class="check-value" style="font-size:0.75rem">GWA≤${prog.max_gwa} Units≥${prog.min_units} F≤${prog.allowed_failed} I≤${prog.allowed_incomplete} D≤${prog.allowed_dropped}</span></div>`;
+
+    // Verification
+    document.getElementById('verBadge').innerHTML=statusBadge(data.verification_status);
+    if(data.verification_status==='Pending'||data.verification_status==='Returned'){
+        document.getElementById('detVerify').innerHTML=`
+            <div class="form-group"><label class="form-label">Notes</label><textarea id="vNotes" class="form-control" placeholder="Reason...">${esc(data.verification_notes||'')}</textarea></div>
+            <div class="d-flex gap-1"><button class="btn btn-success" onclick="doVerify('Verified')">✅ Verify</button><button class="btn btn-danger" onclick="doVerify('Returned')">↩️ Return</button></div>`;
+    } else {
+        document.getElementById('detVerify').innerHTML=`<div class="compliance-check"><span class="check-label">Status</span><span class="check-value">${statusBadge(data.verification_status)}</span></div>
+        <div class="compliance-check"><span class="check-label">Notes</span><span class="check-value">${esc(data.verification_notes||'None')}</span></div>
+        <div class="compliance-check"><span class="check-label">At</span><span class="check-value" style="font-size:0.8rem">${fmtDate(data.verified_at)}</span></div>`;
+    }
+
+    // Compliance
+    renderCompliance(data,prog);
+    // Renewal
+    renderRenewal(data);
+    // Audit
+    loadAudit(id);
+
+    document.getElementById('subListView').classList.add('hidden');
+    document.getElementById('subDetailView').classList.remove('hidden');
+}
+
+function renderCompliance(s,prog){
+    if(s.compliance_status){
+        document.getElementById('compBadge').innerHTML=statusBadge(s.compliance_status);
+        const checks=[
+            {l:'GWA ≤ '+prog.max_gwa,p:parseFloat(s.gwa)<=parseFloat(prog.max_gwa),v:s.gwa},
+            {l:'Units ≥ '+prog.min_units,p:parseInt(s.enrolled_units)>=parseInt(prog.min_units),v:s.enrolled_units},
+            {l:'Failed ≤ '+prog.allowed_failed,p:parseInt(s.failed_count)<=parseInt(prog.allowed_failed),v:s.failed_count},
+            {l:'Incomplete ≤ '+prog.allowed_incomplete,p:parseInt(s.incomplete_count)<=parseInt(prog.allowed_incomplete),v:s.incomplete_count},
+            {l:'Dropped ≤ '+prog.allowed_dropped,p:parseInt(s.dropped_count)<=parseInt(prog.allowed_dropped),v:s.dropped_count},
+            {l:'On time',p:!s.is_late,v:s.is_late?'Late':'On time'}
+        ];
+        let h='';checks.forEach(c=>{h+=`<div class="compliance-check"><div class="check-icon ${c.p?'pass':'fail'}">${c.p?'✓':'✕'}</div><span class="check-label">${c.l}</span><span class="check-value ${c.p?'text-success':'text-danger'}">${c.v}</span></div>`;});
+        if(s.compliance_reasons)h+=`<div class="mt-2 alert ${s.compliance_status==='Compliant'?'alert-success':'alert-danger'}"><span>${esc(s.compliance_reasons)}</span></div>`;
+        document.getElementById('detCompliance').innerHTML=h;
+    } else {
+        document.getElementById('compBadge').innerHTML='<span class="badge badge-pending">Not Evaluated</span>';
+        document.getElementById('detCompliance').innerHTML=s.verification_status==='Verified'?
+            '<p class="text-secondary mb-2">Ready for evaluation.</p><button class="btn btn-primary" onclick="doEvaluate()">📋 Evaluate Compliance</button>':
+            '<div class="alert alert-warning">⏳ Must be verified first.</div>';
+    }
+}
+
+function renderRenewal(s){
+    if(s.renewal_decision){
+        document.getElementById('renBadge').innerHTML=statusBadge(s.renewal_decision);
+        document.getElementById('detRenewal').innerHTML=`<div class="compliance-check"><span class="check-label">Decision</span><span class="check-value">${statusBadge(s.renewal_decision)}</span></div><div class="compliance-check"><span class="check-label">Notes</span><span class="check-value">${esc(s.renewal_notes||'None')}</span></div>`;
+    } else {
+        document.getElementById('renBadge').innerHTML='<span class="badge badge-pending">Pending</span>';
+        if(s.verification_status!=='Verified')document.getElementById('detRenewal').innerHTML='<div class="alert alert-warning">⏳ Must be verified first.</div>';
+        else if(!s.compliance_status)document.getElementById('detRenewal').innerHTML='<div class="alert alert-warning">⏳ Must be evaluated first.</div>';
+        else {
+            const canApprove=s.compliance_status==='Compliant';
+            document.getElementById('detRenewal').innerHTML=`
+                <div class="form-group"><label class="form-label">Notes</label><textarea id="rNotes" class="form-control"></textarea></div>
+                <div class="d-flex gap-1">
+                    ${canApprove?'<button class="btn btn-success" onclick="doRenewal(\'Approved\')">✅ Approve</button>':'<div class="alert alert-danger" style="margin:0;padding:6px 12px"><span>Cannot approve: deficient</span></div>'}
+                    <button class="btn btn-warning" onclick="doRenewal('Held')">🔒 Hold</button>
+                </div>`;
+        }
+    }
+}
+
+async function doVerify(status){
+    const notes=document.getElementById('vNotes')?.value||'';
+    if(status==='Returned'&&!notes.trim()){alert('Provide return reason');return;}
+    const upd={verification_status:status,verification_notes:notes,verified_by:profile.id,verified_at:new Date().toISOString()};
+    if(status==='Returned'){upd.compliance_status=null;upd.compliance_reasons=null;upd.evaluated_by=null;upd.evaluated_at=null;upd.renewal_decision=null;upd.renewal_notes=null;upd.decided_by=null;upd.decided_at=null;}
+    await _supabase.from('semester_submissions').update(upd).eq('id',currentSub.id);
+    await _supabase.from('audit_log').insert({submission_id:currentSub.id,action:'Verification: '+status,actor_id:profile.id,actor_name:profile.full_name,details:'Status: '+status+'. Notes: '+notes,new_value:status});
+    viewSub(currentSub.id);
+}
+
+async function doEvaluate(){
+    const s=currentSub;const prog=s.scholar_assignments?.scholarship_programs;
+    let reasons=[],ok=true;
+    if(parseFloat(s.gwa)>parseFloat(prog.max_gwa)){reasons.push(`GWA ${s.gwa} exceeds maximum allowed ${prog.max_gwa} for ${prog.program_name}`);ok=false;}
+    if(parseInt(s.enrolled_units)<parseInt(prog.min_units)){reasons.push(`Enrolled units ${s.enrolled_units} below minimum required ${prog.min_units}`);ok=false;}
+    if(parseInt(s.failed_count)>parseInt(prog.allowed_failed)){reasons.push(`Failed subjects ${s.failed_count} exceeds allowed ${prog.allowed_failed}`);ok=false;}
+    if(parseInt(s.incomplete_count)>parseInt(prog.allowed_incomplete)){reasons.push(`Incomplete grades ${s.incomplete_count} exceeds allowed ${prog.allowed_incomplete}`);ok=false;}
+    if(parseInt(s.dropped_count)>parseInt(prog.allowed_dropped)){reasons.push(`Dropped subjects ${s.dropped_count} exceeds allowed ${prog.allowed_dropped}`);ok=false;}
+    if(s.is_late){reasons.push('Submission was late (after deadline)');ok=false;}
+    const status=ok?'Compliant':'With Deficiency';
+    const reasonText=ok?'All policy requirements met.':reasons.join('; ');
+    await _supabase.from('semester_submissions').update({compliance_status:status,compliance_reasons:reasonText,evaluated_by:profile.id,evaluated_at:new Date().toISOString()}).eq('id',s.id);
+    await _supabase.from('audit_log').insert({submission_id:s.id,action:'Compliance: '+status,actor_id:profile.id,actor_name:profile.full_name,details:reasonText,new_value:status});
+    viewSub(s.id);
+}
+
+async function doRenewal(decision){
+    const s=currentSub;
+    if(decision==='Approved'&&s.compliance_status==='With Deficiency'){alert('Cannot approve deficient record.');return;}
+    if(s.verification_status!=='Verified'){alert('Must be verified first.');return;}
+    if(!s.compliance_status){alert('Must be evaluated first.');return;}
+    const notes=document.getElementById('rNotes')?.value||'';
+    await _supabase.from('semester_submissions').update({renewal_decision:decision,renewal_notes:notes,decided_by:profile.id,decided_at:new Date().toISOString()}).eq('id',s.id);
+    await _supabase.from('audit_log').insert({submission_id:s.id,action:'Renewal: '+decision,actor_id:profile.id,actor_name:profile.full_name,details:'Decision: '+decision+'. Notes: '+notes,new_value:decision});
+    viewSub(s.id);
+}
+
+async function loadAudit(subId){
+    const{data}=await _supabase.from('audit_log').select('*').eq('submission_id',subId).order('created_at',{ascending:false});
+    const c=document.getElementById('detAudit');
+    if(!data||!data.length){c.innerHTML='<p class="text-muted">No audit records.</p>';return;}
+    let h='<div class="timeline">';
+    data.forEach(a=>{h+=`<div class="timeline-item"><div class="timeline-time">${fmtDate(a.created_at)}</div><div class="timeline-action"><strong>${esc(a.action)}</strong></div><div class="timeline-detail">By: ${esc(a.actor_name)}</div><div class="timeline-detail">${esc(a.details)}</div></div>`;});
+    h+='</div>';c.innerHTML=h;
+}
+
+function backToList(){document.getElementById('subDetailView').classList.add('hidden');document.getElementById('subListView').classList.remove('hidden');}
+function openModal(id){document.getElementById(id).classList.remove('hidden');}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+</script>
+</body>
+</html>
